@@ -7,7 +7,6 @@ terraform {
   }
 }
 
-# Токен берётся из переменной окружения TWC_TOKEN (см. .env в корне репозитория).
 provider "twc" {}
 
 data "twc_image" "custom" {
@@ -37,27 +36,6 @@ resource "twc_server" "vps" {
     disk            = 180 * 1024
     cpu             = 4
     ram             = 8 * 1024
-  }
-}
-
-resource "terraform_data" "wait_ssh" {
-  depends_on = [twc_server.vps]
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command     = <<-EOT
-      ip='${twc_floating_ip.v4.ip}'
-      echo "Ожидание SSH на $ip:22 ..."
-      for i in $(seq 1 60); do
-        if timeout 3 bash -c "</dev/tcp/$ip/22" 2>/dev/null; then
-          echo "Порт 22 открыт на $ip"
-          exit 0
-        fi
-        sleep 10
-      done
-      echo "Таймаут: порт 22 на $ip не поднялся за 10 минут" >&2
-      exit 1
-    EOT
   }
 }
 

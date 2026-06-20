@@ -2,9 +2,17 @@ set -euxo pipefail
 
 REPO_URL="${ISP_REPO_URL:-https://github.com/GoldenDeals/isp.git}"
 REPO_DIR="${ISP_REPO_DIR:-/srv/isp}"
-SALT_ROOT="$REPO_DIR/node/salt"
+SALT_ROOT="$REPO_DIR/salt"
 APPLY_INTERVAL_MIN="${ISP_SALT_INTERVAL_MIN:-15}"
 SALT_VERSION="${ISP_SALT_VERSION:-onedir}"   # 'onedir' = последний; либо 'onedir 3007.1' для пина
+
+sudo tee /etc/pacman.d/mirrorlist >/dev/null <<'EOF'
+Server = https://mirror.yandex.ru/archlinux/$repo/os/$arch
+Server = https://mirror.truenetwork.ru/archlinux/$repo/os/$arch
+EOF
+sudo pacman -Sy --needed --noconfirm reflector || true
+sudo reflector --country Russia --protocol https --age 24 --latest 15 --sort rate \
+    --save /etc/pacman.d/mirrorlist || true
 
 sudo pacman -Sy --needed --noconfirm qemu-guest-agent git curl cronie
 sudo systemctl enable qemu-guest-agent sshd cronie
@@ -44,7 +52,7 @@ REPO_DIR="${ISP_REPO_DIR:-/srv/isp}"
 cd "$REPO_DIR"
 git pull --ff-only --quiet
 
-NODE_TYPE="$(salt-call --local --out=newline_values_only grains.get node_type 2>/dev/null || true)"
+NODE_TYPE="$(salt-call --local --out=json grains.get node_type 2>/dev/null | sed -n 's/.*"local"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
 if [ -z "$NODE_TYPE" ] || [ "$NODE_TYPE" = "None" ]; then
   echo "[isp-salt] grain node_type не задан — highstate пропущен"
   exit 0
