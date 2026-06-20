@@ -1,24 +1,15 @@
 set -euxo pipefail
 
-# --- Masterless Salt + git-pull cron ----------------------------------------
-# Узел тянет состояния из публичного репозитория по HTTPS и применяет
-# node/salt/types/<node_type>.sls. node_type берётся из grain'а node_type,
-# который cloud-init пишет при создании узла у провайдера, например:
-#
-#   write_files:
-#     - path: /etc/salt/grains
-#       content: |
-#         node_type: router
-#
-# Если grain не задан — highstate просто пропускается.
-
 REPO_URL="${ISP_REPO_URL:-https://github.com/GoldenDeals/isp.git}"
 REPO_DIR="${ISP_REPO_DIR:-/srv/isp}"
 SALT_ROOT="$REPO_DIR/node/salt"
 APPLY_INTERVAL_MIN="${ISP_SALT_INTERVAL_MIN:-15}"
 SALT_VERSION="${ISP_SALT_VERSION:-onedir}"   # 'onedir' = последний; либо 'onedir 3007.1' для пина
 
-sudo pacman -Sy --needed --noconfirm git curl cronie
+sudo pacman -Sy --needed --noconfirm qemu-guest-agent git curl cronie
+sudo systemctl enable qemu-guest-agent sshd cronie
+
+sudo sed -i '/\bswap\b/d' /etc/fstab || true
 
 # Salt onedir через официальный bootstrap; -X — не запускать демоны (masterless).
 curl -fsSL https://github.com/saltstack/salt-bootstrap/releases/latest/download/bootstrap-salt.sh -o /tmp/bootstrap-salt.sh
@@ -40,7 +31,7 @@ EOF
 
 # Клон репозитория состояний.
 if [ ! -d "$REPO_DIR/.git" ]; then
-  sudo git clone "$REPO_URL" "$REPO_DIR"
+    sudo git clone "$REPO_URL" "$REPO_DIR"
 fi
 
 # Обёртка: git pull + применение типа узла из grain node_type.
@@ -63,15 +54,17 @@ exec salt-call --local state.apply "types.${NODE_TYPE}"
 EOF
 sudo chmod 0755 /usr/local/bin/isp-salt-apply
 
-# Cron: раз в N минут pull+apply, лог в /var/log/isp-salt.log.
-# onedir-симлинки salt-call лежат в /usr/bin; /opt/saltstack/salt — на всякий случай.
 sudo tee /etc/cron.d/isp-salt >/dev/null <<EOF
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/saltstack/salt
 */$APPLY_INTERVAL_MIN * * * * root /usr/local/bin/isp-salt-apply >> /var/log/isp-salt.log 2>&1
 EOF
 sudo chmod 0644 /etc/cron.d/isp-salt
-sudo systemctl enable cronie.service
 
+sudo passwd -l arch || true
+sudo cloud-init clean --logs || true
+sudo truncate -s 0 /etc/machine-id
+sudo rm -f /etc/ssh/ssh_host_*
+ 
 sync
-echo "[salt] done"
+echo "[base] done"

@@ -1,0 +1,4 @@
+{% set base = salt['grains.filter_by']({
+    'Arch':   {'admin_group': 'wheel', 'shell': '/bin/bash'},
+    'Debian': {'admin_group': 'sudo',  'shell': '/bin/bash'},
+}, grain='os_family', default='Arch') %}
