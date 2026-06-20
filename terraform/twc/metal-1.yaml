@@ -1,0 +1,7 @@
+#cloud-config
+
+write_files:
+  - path: /etc/salt/grains
+    permissions: '0644'
+    content: |
+      node_type: metal

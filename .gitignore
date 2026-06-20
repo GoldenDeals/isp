@@ -2,3 +2,9 @@ images/
 .env
 packer/arm/
 
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+
