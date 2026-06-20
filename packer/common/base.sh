@@ -3,7 +3,7 @@ set -euxo pipefail
 REPO_URL="${ISP_REPO_URL:-https://github.com/GoldenDeals/isp.git}"
 REPO_DIR="${ISP_REPO_DIR:-/srv/isp}"
 SALT_ROOT="$REPO_DIR/salt"
-APPLY_INTERVAL_MIN="${ISP_SALT_INTERVAL_MIN:-15}"
+APPLY_INTERVAL_MIN="${ISP_SALT_INTERVAL_MIN:-5}"
 SALT_VERSION="${ISP_SALT_VERSION:-onedir}"   # 'onedir' = последний; либо 'onedir 3007.1' для пина
 
 sudo tee /etc/pacman.d/mirrorlist >/dev/null <<'EOF'

@@ -42,3 +42,10 @@ incus_init:
     - unless: 'incus storage list --format csv | grep -q .'
     - require:
       - service: incus_service
+
+incus_https_listener:
+  cmd.run:
+    - name: incus config set core.https_address :8443
+    - unless: '[ "$(incus config get core.https_address)" = ":8443" ]'
+    - require:
+      - service: incus_service
